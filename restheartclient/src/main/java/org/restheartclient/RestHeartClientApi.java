@@ -1,6 +1,7 @@
 package org.restheartclient;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,27 +15,26 @@ import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.message.BasicHeader;
 import org.restheartclient.connection.HttpConnectionUtils;
-import org.restheartclient.data.RestHeartClientRequest;
 import org.restheartclient.data.RestHeartClientResponse;
 import org.restheartclient.utils.GsonUtils;
+import org.restheartclient.utils.MongoURLBuilder;
 
 /**
  * Created by aeirew on 7/12/2017.
  */
 public class RestHeartClientApi implements Closeable {
 
-    /* RestHeart MongoDb Constants Declaration */
+    private static final Logger LOGGER = Logger.getLogger(RestHeartClientApi.class.getName());
+
+    /* RestHeart Mongo Db Constants Declaration */
     private static final String ETAG_CONDITION = "If-Match";
     private static final String CREATED_ON_TAG = "created_on";
     private static final String CURRENT_DATE_TAG = "$currentDate";
     private static final String DESCRIPTION_TAG = "description";
+    private static final String DEFAULT_LOCALHOST_URL = "http://127.0.0.1:8080/";
+    /**/
 
-    private static String DEFAULT_MONGO_URL = "http://127.0.0.1:8080/";
-
-    private static final Logger LOGGER = Logger.getLogger(RestHeartClientApi.class.getName());
-
-    private String mongoUrl = DEFAULT_MONGO_URL;
-
+    private String mongoUrl = DEFAULT_LOCALHOST_URL;
     private HttpConnectionUtils httpConnectionUtils;
 
     public RestHeartClientApi() {
@@ -54,183 +54,297 @@ public class RestHeartClientApi implements Closeable {
         this.httpConnectionUtils = httpConnectionUtils;
     }
 
-    public RestHeartClientResponse createNewDataBase(final RestHeartClientRequest request) {
-        RestHeartClientResponse response = null;
-        if (request != null) {
-            String dbName = request.getDataBaseName();
-            String dbDesc = request.getDescription();
-            LOGGER.info("Trying to create new db-" + dbName + " with desc-" + dbDesc);
-            if (dbName != null && !dbName.isEmpty()) {
-                JsonObject jo = new JsonObject();
-                JsonObject currentDate = new JsonObject();
-                currentDate.addProperty(CREATED_ON_TAG, true);
-                jo.add(CURRENT_DATE_TAG, currentDate);
+    /**
+     * @param databaseName Required
+     */
+    public RestHeartClientResponse createNewDataBase(final String databaseName) {
+        return createNewDataBase(databaseName, null);
+    }
 
-                if (dbDesc != null) {
-                    jo.addProperty(DESCRIPTION_TAG, dbDesc);
-                }
-                String url = this.mongoUrl + dbName;
-                try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpPut(url, jo)) {
-                    response = extractFromResponse(httpResponse);
-                } catch (IOException e) {
-                    LOGGER.log(Level.SEVERE, "Was unable to create new Mongo DB with name-" + dbName
-                        + " and description" + dbDesc, e);
-                }
-            }
+    /**
+     * @param databaseName Required
+     * @param databaseDescription Optional
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse createNewDataBase(final String databaseName, final String databaseDescription) {
+        RestHeartClientResponse response = null;
+        LOGGER.info("Trying to create new db-" + databaseName + " with desc-" + databaseDescription);
+
+        JsonObject jo = new JsonObject();
+        JsonObject currentDate = new JsonObject();
+        currentDate.addProperty(CREATED_ON_TAG, true);
+        jo.add(CURRENT_DATE_TAG, currentDate);
+
+        if (databaseDescription != null) {
+            jo.addProperty(DESCRIPTION_TAG, databaseDescription);
+        }
+
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .build();
+
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpPut(url, jo)) {
+            response = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Was unable to create new Mongo DB with name-" + databaseName
+                + " and description" + databaseDescription, e);
         }
 
         return response;
     }
 
-    public RestHeartClientResponse deleteDataBase(final RestHeartClientRequest request) {
+    /**
+     * @param databaseName Required
+     * @param databaseETag Required
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse deleteDataBase(final String databaseName, final String databaseETag) {
         RestHeartClientResponse response = null;
-        if (request != null) {
-            String dbName = request.getDataBaseName();
-            String dbETag = request.getETag();
-            LOGGER.info("Trying to create new db-" + dbName);
-            if (dbName != null && !dbName.isEmpty() && dbETag != null && !dbETag.isEmpty()) {
-                String url = this.mongoUrl + dbName;
-                List<Header> headers = createHeadersList(dbETag);
-                try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpDelete(url, headers)) {
-                    response = extractFromResponse(httpResponse);
-                } catch (IOException e) {
-                    LOGGER.log(Level.SEVERE, "was unable to delete Mongo DB with name-" + dbName, e);
-                }
-            }
+        LOGGER.info("Trying to create new db-" + databaseName);
+
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .build();
+
+        List<Header> headers = createHeadersList(databaseETag);
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpDelete(url, headers)) {
+            response = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "was unable to delete Mongo DB with name-" + databaseName, e);
         }
 
         return response;
     }
 
-    public RestHeartClientResponse createNewCollection(final RestHeartClientRequest request) {
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @return {@link RestHeartClientResponse}
+     */
+    public RestHeartClientResponse createNewCollection(final String databaseName, final String collectionName) {
+        return createNewCollection(databaseName, collectionName, null);
+    }
+
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @param collectionDescription Optional
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse createNewCollection(final String databaseName, final String collectionName,
+        final String collectionDescription) {
         RestHeartClientResponse response = null;
-        if (request != null) {
-            String dbName = request.getDataBaseName();
-            String coll = request.getCollectionName();
-            String desc = request.getDescription();
-            LOGGER.info(
-                "Trying to create new collection-" + coll + " in DB-" + dbName + " with desc-" + desc);
-            if (dbName != null && !dbName.isEmpty() && coll != null && !coll.isEmpty()) {
-                JsonObject jo = new JsonObject();
-                if (desc != null) {
-                    jo.addProperty(DESCRIPTION_TAG, desc);
-                }
-                String url = this.mongoUrl + dbName + "/" + coll;
-                try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpPut(url, jo)) {
-                    response = extractFromResponse(httpResponse);
-                } catch (IOException e) {
-                    LOGGER.log(Level.SEVERE, "was unable to create new Mongo DB collection with name-" + coll
-                        + "in DB-" + dbName, e);
-                }
-            }
+        LOGGER.info("Trying to create new collection-" + collectionName + " in DB-" +
+            databaseName + " with desc-" + collectionDescription);
+
+        JsonObject jo = new JsonObject();
+        if (collectionDescription != null) {
+            jo.addProperty(DESCRIPTION_TAG, collectionDescription);
+        }
+
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .setCollectionName(collectionName)
+            .build();
+
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpPut(url, jo)) {
+            response = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "was unable to create new Mongo DB collection with name-" + collectionName
+                + "in DB-" + databaseName, e);
         }
 
         return response;
     }
 
-    public RestHeartClientResponse deleteCollection(final RestHeartClientRequest request) {
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @param collectionETag Required
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse deleteCollection(final String databaseName, final String collectionName,
+        final String collectionETag) {
         RestHeartClientResponse response = null;
-        if (request != null) {
-            String dbName = request.getDataBaseName();
-            String collName = request.getCollectionName();
-            String collETag = request.getETag();
-            LOGGER.info("Trying to create new db-" + dbName);
-            if (dbName != null && !dbName.isEmpty() && collName != null && !collName.isEmpty()
-                && collETag != null && !collETag.isEmpty()) {
-                String url = this.mongoUrl + dbName + "/" + collName;
-                List<Header> headers = createHeadersList(collETag);
+        LOGGER.info("Trying to create new db-" + databaseName);
 
-                try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpDelete(url, headers)) {
-                    response = extractFromResponse(httpResponse);
-                } catch (IOException e) {
-                    LOGGER.log(Level.SEVERE, "was unable to delete Mongo DB with name-" + dbName, e);
-                }
-            }
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .setCollectionName(collectionName)
+            .build();
+        List<Header> headers = createHeadersList(collectionETag);
+
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpDelete(url, headers)) {
+            response = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "was unable to delete Mongo DB collection from DB name-" +
+                databaseName + ", collection name-" + collectionName + " and collection etag-" + collectionETag, e);
         }
 
         return response;
     }
 
-    public RestHeartClientResponse insertDocumentInCollection(final RestHeartClientRequest request) {
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @param documentToInsert Required
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse insertDocumentInCollection(final String databaseName, final String collectionName,
+        final Object documentToInsert) {
         RestHeartClientResponse response = null;
-        if (request != null) {
-            String dbName = request.getDataBaseName();
-            String collName = request.getCollectionName();
-            Object document = request.getRequestObject();
-            LOGGER
-                .info("Trying to insert document in collection-" + collName + " and DB-" + dbName);
+        LOGGER.info("Trying to insert document in collection-" + collectionName + " and DB-" + databaseName);
 
-            if (dbName != null && !dbName.isEmpty() && collName != null && !collName.isEmpty()
-                && document != null) {
-                String url = this.mongoUrl + dbName + "/" + collName;
-                try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpPost(url, document)) {
-                    response = extractFromResponse(httpResponse);
-                } catch (IOException e) {
-                    LOGGER.log(Level.SEVERE, "Was unable to insert document-"
-                        + GsonUtils.toJson(document) + " to DB with name-" + dbName
-                        + " and collection-" + collName, e);
-                }
-            }
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .setCollectionName(collectionName)
+            .build();
+
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpPost(url, documentToInsert)) {
+            response = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Was unable to insert document-"
+                + GsonUtils.toJson(documentToInsert) + " to DB with name-" + databaseName
+                + " and collection-" + collectionName, e);
         }
 
         return response;
     }
 
-    public RestHeartClientResponse deleteDocumentById(final RestHeartClientRequest request) {
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @param documentId Required
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse deleteDocumentById(final String databaseName, final String collectionName,
+        final String documentId) {
         RestHeartClientResponse response = null;
-        if (request != null) {
-            String dbName = request.getDataBaseName();
-            String collName = request.getCollectionName();
-            String docId = request.getId();
-            LOGGER.info("Trying to create new db-" + dbName);
-            if (dbName != null && !dbName.isEmpty() && collName != null && !collName.isEmpty()
-                && docId != null && !docId.isEmpty()) {
-                String url = this.mongoUrl + dbName + "/" + collName + "/" + docId;
-                try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpDelete(url, null)) {
-                    response = extractFromResponse(httpResponse);
-                } catch (IOException e) {
-                    LOGGER.log(Level.SEVERE, "Was unable to delete Mongo DB with name-" + dbName, e);
-                }
-            }
+        LOGGER.info("Trying to create new db-" + databaseName);
+
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .setCollectionName(collectionName)
+            .setDocumentId(documentId).build();
+
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpDelete(url, null)) {
+            response = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Was unable to delete document from DB name-" + databaseName +
+                ", collection name-" + collectionName + " and document id-" + documentId, e);
         }
 
         return response;
     }
 
-    public <T> T getAllDocuments(final RestHeartClientRequest request) {
-        if (request != null) {
-            String dbName = request.getDataBaseName();
-            LOGGER.info("Trying to get all docs from db-" + dbName);
-            RestHeartClientResponse response = null;
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse getAllDocumentsFromCollection(final String databaseName,
+        final String collectionName) {
+        RestHeartClientResponse restHeartClientResponse = null;
+        LOGGER.info("Trying to get all documents from db-" + databaseName + ", collection-" + collectionName);
+
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .setCollectionName(collectionName)
+            .build();
+
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpGet(url)) {
+            restHeartClientResponse = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE,
+                "Was unable to get Mongo DB collection documents with DB name-" + databaseName +
+                    " and collection name-" + collectionName, e);
         }
 
-        return null;
+        return restHeartClientResponse;
     }
 
-    public <T> T getDocumentById() {
-        return null;
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @param documentId Required
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse getDocumentById(final String databaseName,
+        final String collectionName, final String documentId) {
+        RestHeartClientResponse restHeartClientResponse = null;
+        LOGGER.info("Trying to get document by id from db-" + databaseName +
+            ", collection-" + collectionName + " and documentId-" + documentId);
+
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String url = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .setCollectionName(collectionName)
+            .setDocumentId(documentId).build();
+
+        try (CloseableHttpResponse httpResponse = this.httpConnectionUtils.sendHttpGet(url)) {
+            restHeartClientResponse = extractFromResponse(httpResponse);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Was unable to delete document from Mongo DB with name-" +
+                databaseName + ", collection name-" + collectionName + " and document id-" + documentId, e);
+        }
+
+        return restHeartClientResponse;
     }
 
-    public <T> T getDocumentQuery() {
+    /**
+     * @param databaseName Required
+     * @param collectionName Required
+     * @param documentId Required
+     * @return {@link RestHeartClientResponse}
+     *
+     */
+    public RestHeartClientResponse getDocumentByQuery() {
         return null;
     }
 
     private RestHeartClientResponse extractFromResponse(final CloseableHttpResponse httpResponse) {
         RestHeartClientResponse response = null;
+        JsonObject responseObj = null;
         if (httpResponse != null) {
             StatusLine statusLine = httpResponse.getStatusLine();
             Header[] allHeaders = httpResponse.getAllHeaders();
             HttpEntity resEntity = httpResponse.getEntity();
-            String responseStr = null;
             if (resEntity != null) {
                 try {
-                    responseStr = IOUtils.toString(resEntity.getContent(), "UTF-8");
+                    String responseStr = IOUtils.toString(resEntity.getContent(), "UTF-8");
+                    if (responseStr != null && !responseStr.isEmpty()) {
+                        JsonParser parser = new JsonParser();
+                        responseObj = parser.parse(responseStr).getAsJsonObject();
+                    }
                 } catch (IOException e) {
                     LOGGER.log(Level.SEVERE, "Was unable to extract response body", e);
                 }
             }
 
-            response = new RestHeartClientResponse(statusLine, allHeaders, responseStr);
+            response = new RestHeartClientResponse(statusLine, allHeaders, responseObj);
         }
         return response;
     }
@@ -244,7 +358,7 @@ public class RestHeartClientApi implements Closeable {
 
     @Override
     public void close() throws IOException {
+        LOGGER.info("Releasing all RestHeart-Client resources");
         this.httpConnectionUtils.close();
-        this.httpConnectionUtils = null;
     }
 }

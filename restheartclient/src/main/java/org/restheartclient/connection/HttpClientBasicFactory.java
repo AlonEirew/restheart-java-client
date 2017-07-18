@@ -14,7 +14,11 @@ public class HttpClientBasicFactory implements IHttpClientFactory, Closeable {
 
     private static final Logger LOGGER = Logger.getLogger(HttpClientBasicFactory.class.getName());
 
-    private CloseableHttpClient httpClient = HttpClients.createDefault();
+    protected CloseableHttpClient httpClient;
+
+    public HttpClientBasicFactory() {
+        this.httpClient = HttpClients.createDefault();
+    }
 
     @Override
     public CloseableHttpClient getHttpClient() {
@@ -24,6 +28,7 @@ public class HttpClientBasicFactory implements IHttpClientFactory, Closeable {
     @Override
     public void close() throws IOException {
         try {
+            LOGGER.log(Level.INFO, "Closing HttpClient instance");
             this.httpClient.close();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Exception when trying to free http client resource", e);
