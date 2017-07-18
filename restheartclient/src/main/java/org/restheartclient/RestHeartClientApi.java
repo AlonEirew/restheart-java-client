@@ -4,6 +4,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.Closeable;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -65,7 +68,6 @@ public class RestHeartClientApi implements Closeable {
      * @param databaseName Required
      * @param databaseDescription Optional
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse createNewDataBase(final String databaseName, final String databaseDescription) {
         RestHeartClientResponse response = null;
@@ -100,7 +102,6 @@ public class RestHeartClientApi implements Closeable {
      * @param databaseName Required
      * @param databaseETag Required
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse deleteDataBase(final String databaseName, final String databaseETag) {
         RestHeartClientResponse response = null;
@@ -136,7 +137,6 @@ public class RestHeartClientApi implements Closeable {
      * @param collectionName Required
      * @param collectionDescription Optional
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse createNewCollection(final String databaseName, final String collectionName,
         final String collectionDescription) {
@@ -171,7 +171,6 @@ public class RestHeartClientApi implements Closeable {
      * @param collectionName Required
      * @param collectionETag Required
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse deleteCollection(final String databaseName, final String collectionName,
         final String collectionETag) {
@@ -201,7 +200,6 @@ public class RestHeartClientApi implements Closeable {
      * @param collectionName Required
      * @param documentToInsert Required
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse insertDocumentInCollection(final String databaseName, final String collectionName,
         final Object documentToInsert) {
@@ -231,7 +229,6 @@ public class RestHeartClientApi implements Closeable {
      * @param collectionName Required
      * @param documentId Required
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse deleteDocumentById(final String databaseName, final String collectionName,
         final String documentId) {
@@ -259,7 +256,6 @@ public class RestHeartClientApi implements Closeable {
      * @param databaseName Required
      * @param collectionName Required
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse getAllDocumentsFromCollection(final String databaseName,
         final String collectionName) {
@@ -289,7 +285,6 @@ public class RestHeartClientApi implements Closeable {
      * @param collectionName Required
      * @param documentId Required
      * @return {@link RestHeartClientResponse}
-     *
      */
     public RestHeartClientResponse getDocumentById(final String databaseName,
         final String collectionName, final String documentId) {
@@ -317,12 +312,47 @@ public class RestHeartClientApi implements Closeable {
     /**
      * @param databaseName Required
      * @param collectionName Required
-     * @param documentId Required
+     * @param query Required
      * @return {@link RestHeartClientResponse}
-     *
      */
-    public RestHeartClientResponse getDocumentByQuery() {
-        return null;
+    public RestHeartClientResponse getDocumentQuery(String databaseName,
+        String collectionName, String query) {
+        RestHeartClientResponse restHeartClientResponse = null;
+        LOGGER.info("Trying to get document with query from db-" + databaseName +
+            ", collection-" + collectionName + " and query-" + query);
+
+        MongoURLBuilder mongoURLBuilder = new MongoURLBuilder();
+        String urlStr = mongoURLBuilder
+            .setBaseURL(this.mongoUrl)
+            .setDatabaseName(databaseName)
+            .setCollectionName(collectionName)
+            .build();
+
+        CloseableHttpResponse httpResponse = null;
+        try {
+            String encode = URLEncoder.encode(query, "UTF-8");
+            URL url = new URL(urlStr + "?" + encode);
+            httpResponse = this.httpConnectionUtils.sendHttpGet(url.toString());
+            restHeartClientResponse = extractFromResponse(httpResponse);
+        } catch (MalformedURLException e) {
+            LOGGER.log(Level.SEVERE, "Was unable to delete, request URL malformed "
+                + "document from Mongo DB with name-" + databaseName + ", collection name-" +
+                collectionName + " and query-" + query, e);
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Was unable to delete document from Mongo DB with name-" +
+                databaseName + ", collection name-" + collectionName + " and query-" + query, e);
+        } finally {
+            if (httpResponse != null) {
+                try {
+                    httpResponse.close();
+                } catch (IOException e) {
+                    LOGGER.log(Level.SEVERE, "Was unable to close the response, "
+                        + "possible memory leak", e);
+                }
+            }
+        }
+
+        return restHeartClientResponse;
     }
 
     private RestHeartClientResponse extractFromResponse(final CloseableHttpResponse httpResponse) {

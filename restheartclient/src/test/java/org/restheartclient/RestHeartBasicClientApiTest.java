@@ -122,6 +122,40 @@ public class RestHeartBasicClientApiTest {
         dropDataBase(creationResponseDB);
     }
 
+    @Test
+    public void testGetDocQuery() throws MalformedURLException {
+        RestHeartClientResponse creationResponseDB = createDataBase();
+        createCollection();
+        RestHeartClientResponse restHeartClientResponse = insertDocInDB();
+        String documentUrlLocation = restHeartClientResponse.getDocumentUrlLocation();
+        URL url = new URL(documentUrlLocation);
+        String idCreate = FilenameUtils.getName(url.getPath());
+
+        String query = "filter={'name':'John'}";
+
+        RestHeartClientResponse response = api.getDocumentQuery(dbName, collName, query);
+        Assert.assertNotNull("Response is null", response);
+
+        JsonObject responseObject = response.getResponseObject();
+        Assert.assertNotNull("Json object response is null", responseObject);
+
+        String idRes = responseObject
+            .get("_embedded")
+            .getAsJsonArray()
+            .get(0)
+            .getAsJsonObject()
+            .get("_id")
+            .getAsJsonObject()
+            .get("$oid")
+            .getAsString();
+
+        Assert.assertEquals("Id's do not match", idCreate, idRes);
+
+        LOGGER.info(GsonUtils.toJson(response.getResponseObject()));
+
+        dropDataBase(creationResponseDB);
+    }
+
     private RestHeartClientResponse createDataBase() {
         RestHeartClientResponse creationResponse = api.createNewDataBase(dbName, "this is a test");
         Assert.assertEquals("response as expected", 201, creationResponse.getStatusCode());
