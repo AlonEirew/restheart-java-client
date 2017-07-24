@@ -5,7 +5,7 @@ import org.apache.http.Header;
 import org.apache.http.client.methods.CloseableHttpResponse;
 
 /**
- * Created by aeirew on 7/16/2017.
+ * Created by Alon Eirew on 7/16/2017.
  */
 public interface IHttpConnectionsUtil {
     <REQ> CloseableHttpResponse sendHttpPost(String url, REQ request);

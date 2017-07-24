@@ -23,7 +23,7 @@ import org.restheartclient.utils.GsonUtils;
 import org.restheartclient.utils.MongoURLBuilder;
 
 /**
- * Created by aeirew on 7/12/2017.
+ * Created by Alon Eirew on 7/12/2017.
  */
 public class RestHeartClientApi implements Closeable {
 
@@ -59,6 +59,7 @@ public class RestHeartClientApi implements Closeable {
 
     /**
      * @param databaseName Required
+     * @return {@link RestHeartClientResponse}
      */
     public RestHeartClientResponse createNewDataBase(final String databaseName) {
         return createNewDataBase(databaseName, null);
@@ -315,7 +316,7 @@ public class RestHeartClientApi implements Closeable {
      * @param query Required
      * @return {@link RestHeartClientResponse}
      */
-    public RestHeartClientResponse getDocumentQuery(String databaseName,
+    public RestHeartClientResponse getDocumentsQuery(String databaseName,
         String collectionName, String query) {
         RestHeartClientResponse restHeartClientResponse = null;
         LOGGER.info("Trying to get document with query from db-" + databaseName +

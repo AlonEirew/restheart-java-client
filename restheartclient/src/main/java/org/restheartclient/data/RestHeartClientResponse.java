@@ -5,7 +5,7 @@ import org.apache.http.Header;
 import org.apache.http.StatusLine;
 
 /**
- * Created by aeirew on 7/12/2017.
+ * Created by Alon Eirew on 7/12/2017.
  */
 public class RestHeartClientResponse {
 

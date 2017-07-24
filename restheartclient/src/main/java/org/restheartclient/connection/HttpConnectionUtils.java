@@ -16,7 +16,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.restheartclient.utils.GsonUtils;
 
 /**
- * Created by aeirew on 7/12/2017.
+ * Created by Alon Eirew on 7/12/2017.
  */
 public class HttpConnectionUtils implements IHttpConnectionsUtil, Closeable {
 

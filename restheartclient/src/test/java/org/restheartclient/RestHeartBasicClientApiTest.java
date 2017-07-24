@@ -1,5 +1,6 @@
 package org.restheartclient;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.io.IOException;
@@ -8,15 +9,17 @@ import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.io.FilenameUtils;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.restheartclient.data.RestHeartClientResponse;
 import org.restheartclient.utils.GsonUtils;
 
 /**
- * Created by aeirew on 7/12/2017.
+ * Created by Alon Eirew on 7/12/2017.
  */
 public class RestHeartBasicClientApiTest {
 
@@ -26,6 +29,8 @@ public class RestHeartBasicClientApiTest {
 
     private String dbName = "testDb";
     private String collName = "testColl";
+
+    private RestHeartClientResponse creationResponseDB;
 
     @BeforeClass
     public static void initRestHeartClient() {
@@ -43,25 +48,26 @@ public class RestHeartBasicClientApiTest {
         }
     }
 
-    @Test
-    public void testCreateAndDeleteCollection() {
-        /* CREATE COLLECTION AND DATABASE */
-        RestHeartClientResponse creationResponseDB = createDataBase();
-        RestHeartClientResponse newCollection = createCollection();
-        /**/
+    @Before
+    public void beforeTest() {
+        creationResponseDB = createDataBase();
+    }
 
-        /* DELETE COLLECTION */
-        RestHeartClientResponse deleteCollection = api.deleteCollection(dbName, collName, newCollection.getEtag());
-        Assert.assertEquals("response as expected", 204, deleteCollection.getStatusCode());
-        /**/
-
+    @After
+    public void afterTest() {
         dropDataBase(creationResponseDB);
     }
 
     @Test
+    public void testCreateAndDeleteCollection() {
+        RestHeartClientResponse newCollection = createCollection();
+
+        RestHeartClientResponse deleteCollection = api.deleteCollection(dbName, collName, newCollection.getEtag());
+        Assert.assertEquals("response as expected", 204, deleteCollection.getStatusCode());
+    }
+
+    @Test
     public void testDeleteDocById() throws MalformedURLException {
-        /* CREATE DOCUMENT AND DELETE BY ID */
-        RestHeartClientResponse creationResponseDB = createDataBase();
         createCollection();
         RestHeartClientResponse restHeartClientResponse = insertDocInDB();
         String documentUrlLocation = restHeartClientResponse.getDocumentUrlLocation();
@@ -73,13 +79,10 @@ public class RestHeartBasicClientApiTest {
             "response not as expected, Code" + deleteDocByIdResponse.getStatusCode() + ", ETag-"
                 + deleteDocByIdResponse.getEtag(), 204,
             deleteDocByIdResponse.getStatusCode());
-
-        dropDataBase(creationResponseDB);
     }
 
     @Test
     public void testGetAllDocs() {
-        RestHeartClientResponse creationResponseDB = createDataBase();
         createCollection();
         insertDocInDB();
         insertDocInDB();
@@ -95,13 +98,10 @@ public class RestHeartBasicClientApiTest {
         Assert.assertEquals("response size not as expected", 2, numberOfElements);
 
         LOGGER.info(GsonUtils.toJson(response.getResponseObject()));
-
-        dropDataBase(creationResponseDB);
     }
 
     @Test
     public void testGetDocById() throws MalformedURLException {
-        RestHeartClientResponse creationResponseDB = createDataBase();
         createCollection();
         RestHeartClientResponse restHeartClientResponse = insertDocInDB();
         String documentUrlLocation = restHeartClientResponse.getDocumentUrlLocation();
@@ -118,42 +118,29 @@ public class RestHeartBasicClientApiTest {
         Assert.assertEquals("Id's do not match", idCreate, idRes);
 
         LOGGER.info(GsonUtils.toJson(response.getResponseObject()));
-
-        dropDataBase(creationResponseDB);
     }
 
     @Test
     public void testGetDocQuery() throws MalformedURLException {
-        RestHeartClientResponse creationResponseDB = createDataBase();
         createCollection();
-        RestHeartClientResponse restHeartClientResponse = insertDocInDB();
-        String documentUrlLocation = restHeartClientResponse.getDocumentUrlLocation();
-        URL url = new URL(documentUrlLocation);
-        String idCreate = FilenameUtils.getName(url.getPath());
+        insertDocInDB();
+        insertDocInDB();
 
         String query = "filter={'name':'John'}";
 
-        RestHeartClientResponse response = api.getDocumentQuery(dbName, collName, query);
+        RestHeartClientResponse response = api.getDocumentsQuery(dbName, collName, query);
         Assert.assertNotNull("Response is null", response);
 
         JsonObject responseObject = response.getResponseObject();
         Assert.assertNotNull("Json object response is null", responseObject);
 
-        String idRes = responseObject
+        JsonArray jsonArray = responseObject
             .get("_embedded")
-            .getAsJsonArray()
-            .get(0)
-            .getAsJsonObject()
-            .get("_id")
-            .getAsJsonObject()
-            .get("$oid")
-            .getAsString();
+            .getAsJsonArray();
 
-        Assert.assertEquals("Id's do not match", idCreate, idRes);
+        Assert.assertEquals("Return Collection Name not 2 as expected", 2, jsonArray.size());
 
         LOGGER.info(GsonUtils.toJson(response.getResponseObject()));
-
-        dropDataBase(creationResponseDB);
     }
 
     private RestHeartClientResponse createDataBase() {

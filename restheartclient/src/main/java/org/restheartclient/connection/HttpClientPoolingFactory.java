@@ -8,7 +8,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 
 /**
- * Created by aeirew on 7/16/2017.
+ * Created by Alon Eirew on 7/16/2017.
  */
 public class HttpClientPoolingFactory implements IHttpClientFactory {
 

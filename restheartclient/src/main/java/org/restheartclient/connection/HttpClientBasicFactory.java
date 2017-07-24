@@ -8,7 +8,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 /**
- * Created by aeirew on 7/16/2017.
+ * Created by Alon Eirew on 7/16/2017.
  */
 public class HttpClientBasicFactory implements IHttpClientFactory, Closeable {
 

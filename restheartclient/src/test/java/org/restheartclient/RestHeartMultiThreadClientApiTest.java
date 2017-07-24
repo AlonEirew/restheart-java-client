@@ -9,7 +9,7 @@ import org.restheartclient.connection.HttpClientPoolingFactory;
 import org.restheartclient.connection.HttpConnectionUtils;
 
 /**
- * Created by aeirew on 7/16/2017.
+ * Created by Alon Eirew on 7/16/2017.
  */
 public class RestHeartMultiThreadClientApiTest {
 

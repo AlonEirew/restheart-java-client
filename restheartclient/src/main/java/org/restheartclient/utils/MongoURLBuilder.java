@@ -3,7 +3,7 @@ package org.restheartclient.utils;
 import java.lang.reflect.MalformedParametersException;
 
 /**
- * Created by aeirew on 7/17/2017.
+ * Created by Alon Eirew on 7/17/2017.
  */
 public class MongoURLBuilder {
     private String baseURL;
