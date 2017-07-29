@@ -1,9 +1,73 @@
-group 'restheartclient'
-version '1.0'
-
 apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'signing'
 
+group 'org.softgorilla'
+version '1.0.0'
 sourceCompatibility = 1.8
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+signing {
+    sign configurations.archives
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                authentication(userName: mavenUser, password: mavenPassword)
+            }
+
+            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                authentication(userName: mavenUser, password: mavenPassword)
+            }
+
+            pom.project {
+                name 'SoftGorilla Application'
+                packaging 'jar'
+                // optionally artifactId can be defined here
+                description 'a simple and lightweight Java library that takes care of all ' +
+                        'HTTP connection code with RESTHeart for MongoDB.'
+                url 'https://github.com/SoftGorilla'
+
+                scm {
+                    connection 'scm:git:git://github.com/SoftGorilla/restheart-java-client.git'
+                    developerConnection 'scm:git:ssh://github.com:SoftGorilla/restheart-java-client.git'
+                    url 'https://github.com/SoftGorilla/restheart-java-client/tree/master'
+                }
+
+                licenses {
+                    license {
+                        name 'MIT License'
+                        url 'http://www.opensource.org/licenses/mit-license.php'
+                    }
+                }
+
+                developers {
+                    developer {
+                        name 'Alon Eirew'
+                        email 'alon.eirew@gmail.com'
+                    }
+                }
+            }
+        }
+    }
+}
 
 repositories {
     mavenCentral()

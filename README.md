@@ -16,3 +16,16 @@ Pre-Requirements
 - Java 8
 - MongoDB 
 - RESTHart
+
+Integration
+--
+**Example**:
+```xml
+<dependency>
+    <groupId>org.softgorilla</groupId>
+    <artifactId>restheartclient</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+**Rest Heart at Maven Central:** https://mvnrepository.com/artifact/org.softgorilla/restheartclient
